@@ -27,6 +27,7 @@ import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.PendingConnection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.api.event.AuthErrorEvent;
 import net.md_5.bungee.api.event.LoginEvent;
 import net.md_5.bungee.api.event.PostLoginEvent;
 import net.md_5.bungee.api.event.ProxyPingEvent;
@@ -339,8 +340,23 @@ public class InitialHandler extends PacketHandler implements PendingConnection
                     disconnect( "Not authenticated with Minecraft.net" );
                 } else
                 {
-                    disconnect( bungee.getTranslation( "mojang_fail" ) );
-                    bungee.getLogger().log( Level.SEVERE, "Error authenticating " + getName() + " with minecraft.net", error );
+                    Callback<AuthErrorEvent> complete = new Callback<AuthErrorEvent>()
+                    {
+                        @Override
+                        public void done(AuthErrorEvent result, Throwable _) {
+                            if ( result.isAllowed() )
+                            {
+                                uniqueId = result.getUuid();
+                                finish();
+                            } else
+                            {
+                                disconnect( bungee.getTranslation( "mojang_fail" ) );
+                                bungee.getLogger().log( Level.SEVERE, "Error authenticating " + getName() + " with minecraft.net", error );
+                            }
+                        }
+                    };
+    
+                    bungee.getPluginManager().callEvent( new AuthErrorEvent( getName(), error, complete ) );
                 }
             }
         };
